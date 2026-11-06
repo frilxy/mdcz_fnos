@@ -1,0 +1,46 @@
+name: 构建 MDCz fnOS 应用包
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "fpk/**"
+      - ".github/workflows/fnos-fpk-build.yml"
+  pull_request:
+    paths:
+      - "fpk/**"
+      - ".github/workflows/fnos-fpk-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 准备 Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: 启用 corepack
+        run: corepack enable
+
+      - name: 构建 fpk
+        run: bash fpk/scripts/build-fpk.sh
+
+      - name: 模拟安装/启动/升级/卸载
+        run: bash fpk/scripts/simulate-lifecycle.sh
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdcz-fpk
+          path: dist/mdcz-*.fpk
+          if-no-files-found: error
+          retention-days: 14

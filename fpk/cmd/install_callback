@@ -1,0 +1,44 @@
+#!/bin/sh
+# 安装后：初始化数据目录、保存端口、校验原生依赖可加载
+set -u
+MDCZ_SCRIPT_TAG=install_callback
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_ensure_dirs
+mdcz_require_node || exit 1
+port="$(mdcz_resolve_port)"
+mdcz_log "数据目录：${MDCZ_DATA_ROOT}"
+mdcz_log "访问端口：${port}"
+
+# 原生依赖（better-sqlite3 / sharp / impit）必须能在当前 Node 24 上加载，
+# 否则会拖到应用启动时才失败，用户只能看到“启动失败”。
+_smoke_log="${MDCZ_LOG_DIR}/install-smoke.log"
+if ! (cd "${MDCZ_APPDEST}" && "${MDCZ_NODE}" --input-type=module -e '
+const [{ default: Database }, sharp, impit] = await Promise.all([
+  import("better-sqlite3"),
+  import("sharp"),
+  import("impit"),
+]);
+if (typeof Database !== "function") throw new Error("better-sqlite3 加载异常");
+if (!sharp.default || typeof sharp.default !== "function") throw new Error("sharp 加载异常");
+if (!impit || typeof impit !== "object") throw new Error("impit 加载异常");
+console.log(`native ok: node ${process.versions.node}, sharp ${sharp.default.versions?.sharp ?? "unknown"}`);
+') >"${_smoke_log}" 2>&1; then
+    mdcz_log "原生依赖加载失败，详情见 ${_smoke_log}"
+    if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then
+        printf 'MDCz 原生依赖加载失败（Node.js 24 / x86_64）。\n' >>"${TRIM_TEMP_LOGFILE}"
+        tail -n 20 "${_smoke_log}" >>"${TRIM_TEMP_LOGFILE}" 2>/dev/null || true
+    fi
+    exit 1
+fi
+mdcz_log "原生依赖加载正常：$(tail -n 1 "${_smoke_log}" 2>/dev/null)"
+
+if mdcz_port_in_use "${port}"; then
+    mdcz_log "警告：端口 ${port} 当前已被占用。启动 MDCz 前请先停止占用者，或在应用设置里更换端口。"
+fi
+
+mdcz_log "安装完成。浏览器访问 http://<NAS 地址>:${port}/ ，首次打开请设置管理员密码。"
+mdcz_log "媒体目录：应用设置 → 授权目录，授予影片所在文件夹后重启应用生效。"
+exit 0

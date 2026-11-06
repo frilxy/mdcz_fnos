@@ -1,0 +1,21 @@
+#!/bin/sh
+# 安装前检查：x86_64 架构 + Node.js 24+
+set -u
+MDCZ_SCRIPT_TAG=install_init
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_log "安装前检查开始"
+
+case "$(uname -m 2>/dev/null)" in
+x86_64 | amd64) ;;
+*)
+    mdcz_fail "当前设备架构为 $(uname -m)，MDCz 应用包内置的是 x86_64 原生依赖，请在 x86_64 设备上安装。"
+    ;;
+esac
+
+mdcz_require_node || exit 1
+
+mdcz_log "安装前检查通过"
+exit 0

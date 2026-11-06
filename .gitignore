@@ -45,3 +45,14 @@ tmp/
 .agents
 .trellis
 .omp/
+
+# fnOS fpk build (official release bundle, pnpm deps, fnpack cache)
+/upstream/
+/fpk/build/
+/fpk/.cache/
+/fpk/dist/
+/.home/
+/.cache/
+/build/
+/tools/
+/.config/

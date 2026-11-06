@@ -1,0 +1,5 @@
+#!/bin/sh
+# 配置变更前：无需预处理
+set -u
+MDCZ_SCRIPT_TAG=config_init
+exit 0

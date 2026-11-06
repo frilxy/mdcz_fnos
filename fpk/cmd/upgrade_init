@@ -1,0 +1,31 @@
+#!/bin/sh
+# 升级前：停止服务，备份数据库与配置
+set -u
+MDCZ_SCRIPT_TAG=upgrade_init
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_paths
+mdcz_log "升级：${TRIM_OLD_APPVER:-未知版本} -> ${TRIM_APPVER:-未知版本}"
+
+mdcz_stop >/dev/null 2>&1 || true
+
+mkdir -p "${MDCZ_BACKUP_DIR}" 2>/dev/null || true
+_stamp="$(date '+%Y%m%d-%H%M%S')"
+_archive="${MDCZ_BACKUP_DIR}/pre-upgrade-${TRIM_OLD_APPVER:-unknown}-to-${TRIM_APPVER:-unknown}-${_stamp}.tar.gz"
+if [ -d "${MDCZ_DATA_ROOT}" ]; then
+    if tar -czf "${_archive}.part" -C "${MDCZ_DATA_ROOT}" config database 2>/dev/null; then
+        mv -f "${_archive}.part" "${_archive}" 2>/dev/null || true
+        mdcz_log "已备份数据库和配置：${_archive}"
+    else
+        rm -f "${_archive}.part" 2>/dev/null || true
+        mdcz_log "警告：自动备份失败，请确认 ${MDCZ_BACKUP_DIR} 可写；升级仍会继续。"
+    fi
+fi
+
+# 只保留最近 5 份自动备份
+ls -1t "${MDCZ_BACKUP_DIR}"/pre-upgrade-*.tar.gz 2>/dev/null | tail -n +6 | while IFS= read -r old; do
+    rm -f "${old}" 2>/dev/null || true
+done
+exit 0

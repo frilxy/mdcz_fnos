@@ -1,0 +1,37 @@
+#!/bin/sh
+# 卸载后：按用户选择删除数据；默认保留
+set -u
+MDCZ_SCRIPT_TAG=uninstall_callback
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_paths
+_remove="${wizard_remove_data:-false}"
+case "${_remove}" in
+true | True | TRUE | 1 | yes | on) _remove=1 ;;
+*) _remove=0 ;;
+esac
+
+if [ "${_remove}" -ne 1 ]; then
+    mdcz_log "按用户选择保留数据目录 ${MDCZ_DATA_ROOT}"
+    exit 0
+fi
+
+# 只允许删除本应用共享目录，绝不触碰授权进来的媒体目录
+case "${MDCZ_DATA_ROOT}" in
+*/@appshare/mdcz | */@appshare/mdcz/) ;;
+*)
+    mdcz_log "拒绝删除非应用共享目录：${MDCZ_DATA_ROOT}"
+    exit 0
+    ;;
+esac
+
+for _sub in config database cache logs backups; do
+    if [ -d "${MDCZ_DATA_ROOT}/${_sub}" ]; then
+        rm -rf "${MDCZ_DATA_ROOT:?}/${_sub}" 2>/dev/null || mdcz_log "删除 ${MDCZ_DATA_ROOT}/${_sub} 失败，请手动检查"
+    fi
+done
+rmdir "${MDCZ_DATA_ROOT}" 2>/dev/null || true
+mdcz_log "已按用户选择删除数据目录 ${MDCZ_DATA_ROOT}"
+exit 0

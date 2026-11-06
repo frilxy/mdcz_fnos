@@ -1,0 +1,21 @@
+#!/bin/sh
+# 配置变更后：保存端口；应用在运行时平滑重启
+set -u
+MDCZ_SCRIPT_TAG=config_callback
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+_running=0
+mdcz_status && _running=1
+port="$(mdcz_resolve_port)"
+mdcz_log "配置已更新，访问端口：${port}"
+
+if [ "${_running}" -eq 1 ]; then
+    mdcz_log "应用正在运行，按新配置重启"
+    mdcz_stop >/dev/null 2>&1 || true
+    mdcz_start || exit 1
+else
+    mdcz_log "应用当前未运行，新配置将在下次启动时生效"
+fi
+exit 0
