@@ -21,17 +21,22 @@ die() {
     exit 1
 }
 
-version="$(sed -n 's/^version[[:space:]]*=[[:space:]]*//p' "${fpk}/manifest" | head -n 1 | tr -d ' \r')"
-[ -n "${version}" ] || die "fpk/manifest 中没有 version 字段"
-version="${MDCZ_VERSION:-${version}}"
-tag="v${version}"
+fpk_version="$(sed -n 's/^version[[:space:]]*=[[:space:]]*//p' "${fpk}/manifest" | head -n 1 | tr -d ' \r')"
+[ -n "${fpk_version}" ] || die "fpk/manifest 中没有 version 字段"
+
+# fpk 版本允许是 0.21.0.1 这类打包修订号；上游发行包版本单独记录，避免去下载不存在的 tag。
+[ -f "${fpk}/upstream-version" ] || die "缺少 fpk/upstream-version（上游发行版本号）"
+upstream_version="$(head -n 1 "${fpk}/upstream-version" | tr -d ' \r')"
+upstream_version="${MDCZ_UPSTREAM_VERSION:-${upstream_version}}"
+[ -n "${upstream_version}" ] || die "fpk/upstream-version 为空"
+tag="v${upstream_version}"
 
 mkdir -p "${cache}" "${build}"
 
-archive="${cache}/mdcz-${version}.tar.gz"
-sums="${cache}/SHA256SUMS-${version}.txt"
+archive="${cache}/mdcz-${upstream_version}.tar.gz"
+sums="${cache}/SHA256SUMS-${upstream_version}.txt"
 if [ ! -f "${archive}" ]; then
-    url="https://github.com/${upstream_repo}/releases/download/${tag}/mdcz-${version}.tar.gz"
+    url="https://github.com/${upstream_repo}/releases/download/${tag}/mdcz-${upstream_version}.tar.gz"
     echo "下载官方发行包：${url}"
     curl -fsSL --retry 3 --retry-delay 3 -o "${archive}.part" "${url}"
     mv "${archive}.part" "${archive}"
@@ -39,12 +44,12 @@ fi
 if [ ! -f "${sums}" ]; then
     curl -fsSL --retry 3 --retry-delay 3 -o "${sums}.part" \
         "https://github.com/${upstream_repo}/releases/download/${tag}/SHA256SUMS.txt" ||
-        die "无法下载 SHA256SUMS.txt（版本 ${version}）"
+        die "无法下载 SHA256SUMS.txt（版本 ${upstream_version}）"
     mv "${sums}.part" "${sums}"
 fi
 
-expected="$(awk -v name="./mdcz-${version}.tar.gz" '$2 == name { print $1 }' "${sums}" | head -n 1)"
-[ -n "${expected}" ] || die "SHA256SUMS.txt 中没有 mdcz-${version}.tar.gz 的校验值"
+expected="$(awk -v name="./mdcz-${upstream_version}.tar.gz" '$2 == name { print $1 }' "${sums}" | head -n 1)"
+[ -n "${expected}" ] || die "SHA256SUMS.txt 中没有 mdcz-${upstream_version}.tar.gz 的校验值"
 actual="$(sha256sum "${archive}" | awk '{ print $1 }')"
 [ "${actual}" = "${expected}" ] || die "发行包校验失败：期望 ${expected}，实际 ${actual}"
 echo "官方发行包校验通过：sha256 ${actual}"
@@ -53,7 +58,7 @@ extract_root="${build}/upstream"
 rm -rf "${extract_root}"
 mkdir -p "${extract_root}"
 tar -xzf "${archive}" -C "${extract_root}"
-src="${extract_root}/mdcz-${version}"
+src="${extract_root}/mdcz-${upstream_version}"
 [ -f "${src}/server.js" ] || die "发行包结构异常：缺少 server.js"
 [ -d "${src}/web" ] || die "发行包结构异常：缺少 web/"
 [ -f "${src}/pnpm-lock.yaml" ] || die "发行包结构异常：缺少 pnpm-lock.yaml"
@@ -96,4 +101,4 @@ console.log(`native ok: node ${process.versions.node}, sharp ${sharp.default.ver
 '
 )
 
-echo "运行时载荷已就绪：${runtime}"
+echo "运行时载荷已就绪：${runtime}（上游 ${upstream_version}，应用版本 ${fpk_version}）"
