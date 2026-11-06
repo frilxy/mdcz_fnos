@@ -274,8 +274,63 @@ mdcz_export_env() {
     export MDCZ_LOG_DIR="${MDCZ_LOG_DIR}"
 }
 
+
+# ---------------------------------------------------------------- 媒体目录 ACL
+
+# 飞牛 1.2.x 的 trimacl 存在非 root 写入判定缺陷：应用用户创建的目录/文件 ACL 正常，
+# 但再次打开写入会 EACCES。官方规避方案是给目录补 owner 的 RWX 继承 ACE。
+# 生命周期脚本以 root 运行（config/privilege: run-as=root），Web 服务仍用 mdcz 用户。
+mdcz_fix_media_acl() {
+    [ "$(id -u 2>/dev/null)" = "0" ] || return 0
+    [ -n "${TRIM_DATA_ACCESSIBLE_PATHS:-}" ] || return 0
+    if [ -x /usr/trim/bin/trimacl ]; then
+        _trimacl=/usr/trim/bin/trimacl
+    else
+        _trimacl="$(command -v trimacl 2>/dev/null || true)"
+    fi
+    [ -n "${_trimacl}" ] || return 0
+
+    mdcz_paths
+    _marker="${MDCZ_PKGETC}/acl-owner-fix-v1"
+    _first=0
+    [ -f "${_marker}" ] || _first=1
+
+    _rest="${TRIM_DATA_ACCESSIBLE_PATHS}"
+    while [ -n "${_rest}" ]; do
+        case "${_rest}" in
+        *:*) _path="${_rest%%:*}" ; _rest="${_rest#*:}" ;;
+        *) _path="${_rest}" ; _rest="" ;;
+        esac
+        [ -n "${_path}" ] || continue
+        case "${_path}" in
+        /vol/* | /vol[0-9]*) ;;
+        *) continue ;;
+        esac
+        [ -d "${_path}" ] || continue
+        if "${_trimacl}" -m a:o:RWX:sdf "${_path}" 2>/dev/null; then
+            mdcz_log "已确保媒体目录 ACL：${_path}"
+        else
+            mdcz_log "警告：无法为 ${_path} 补 owner ACL，刮削写入可能失败"
+        fi
+        if [ "${_first}" -eq 1 ]; then
+            # 修复前已存在的影片目录不会自动继承新 ACE，首次启动补一遍
+            if [ -n "${TRIM_UID:-}" ]; then
+                find "${_path}" -maxdepth 3 -type d -user "${TRIM_UID}" \
+                    -exec "${_trimacl}" -m a:o:RWX:sdf {} \; 2>/dev/null || true
+            fi
+        fi
+    done
+
+    if [ "${_first}" -eq 1 ]; then
+        mkdir -p "${MDCZ_PKGETC}" 2>/dev/null || true
+        printf '%s\n' "$(date '+%F %T')" >"${_marker}" 2>/dev/null || true
+        mdcz_log "媒体目录 ACL 首次修复完成"
+    fi
+}
+
 mdcz_start() {
     mdcz_paths
+    mdcz_fix_media_acl
     if mdcz_status; then
         mdcz_log "MDCz 已在运行（pid $(mdcz_pid_from_file "${MDCZ_PID_FILE}" supervisor.mjs)）"
         return 0
