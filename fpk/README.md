@@ -137,6 +137,7 @@ bash fpk/scripts/simulate-lifecycle.sh
 - [x] 端口状态写入 `@appconf/mdcz/web-port`，值为 3838
 - [x] 应用中心真实升级 `0.21.0` → `0.21.0.1`：升级前自动停止并生成 `backups/pre-upgrade-0.21.0-to-0.21.0.1-20261106-204648.tar.gz`（约 890 KB），升级后自动启动
 - [x] 升级后 `config/default.toml`、`database/mdcz.sqlite`、`web-port` 全部保留，显示名与入口标题均为「MDCz」，版本 `0.21.0.1`，端口仍为 3838
+- [x] 真实刮削成功：`JUR-890` 生成 `JUR-890.nfo` / `movie.nfo`、poster、fanart、`extrafanart/fanart1-10.jpg`、`.actors` 演员头像，媒体目录写入正常
 
 > 说明：`fnos-cli` 的 `app start` 会因 `nodejs_v24` 状态为 `nostart`（运行时包，不是可启停服务）而要求走应用中心界面，这是 CLI 的依赖保护，不是应用故障；`app restart` 与 GUI 启动正常。
 
@@ -168,8 +169,43 @@ bash fpk/scripts/simulate-lifecycle.sh
 | 启动失败：端口被占用 | 应用设置里换端口，或停止占用端口的应用；`ss -ltnp \| grep 3838` 查看 |
 | WebUI 打不开 | 先看 `@appshare/mdcz/logs/mdcz.log`；确认应用状态为运行中，端口与入口一致 |
 | 刮削报错 / 无法读取影片 | 检查「授权目录」是否包含影片上级目录；需要写文件时给读写权限；重启应用 |
+| 刮削报 `EACCES: permission denied, copyfile/scandir /vol1/...` | 飞牛 1.2.x 的 trimacl 已知缺陷，见下方「飞牛 1.2.x 写入权限（trimacl）」 |
 | 数据库被锁 | 同一数据库只能有一个 MDCz 实例；确认没有手工再起一个 `node server.js` |
 | 原生模块加载失败 | 确认是 x86_64 设备；`node_modules` 不应被手工替换；重新安装应用包 |
+
+### 飞牛 1.2.x 写入权限（trimacl）
+
+**现象**：授权目录已设为「读写」，但刮削时仍报：
+
+```
+EACCES: permission denied, copyfile '/vol1/.../.mdcz-staging-.../extrafanart/.scene-set-...jpg'
+EACCES: permission denied, scandir '/vol1/1000/download/xunlei'
+```
+
+**原因**：飞牛 1.2.x 的 trimacl（Windows ACL）内核补丁存在非 root 用户写入判定缺陷，表现为目录/文件属主与权限位都正确、ACL 也显示可读写，但应用用户创建文件后再次打开写入仍被拒绝。上游论坛记录：
+
+- [fnOS 1.2.0302 trimacl 挂载选项导致非 root 用户写入权限检查异常](https://club.fnnas.com/forum.php?mod=viewthread&tid=70373)
+
+**处理**（需要 NAS 的 root SSH；二选一）：
+
+1. 官方给的单条命令（推荐先只对出问题的媒体目录执行）：
+
+   ```bash
+   trimacl -m a:o:RWX:sdf /vol1/1000/download/test
+   trimacl -m a:o:RWX:sdf /vol1/1000/download/xunlei
+   ```
+
+   然后重新刮削。新创建的文件会继承 owner 的 RWX ACE，写入恢复正常。
+
+2. 如果同时用应用中心 API 的 `file acl set` 修，**必须保留应用用户的 ACE**，不能只写 owner，否则应用会连目录都无法读取（`scandir ... EACCES`）。正确写法是同时包含 owner 和 `mdcz`：
+
+   ```json
+   [{"owner":32719,"inherit":7},{"uid":981,"perm":14287,"inherit":7}]
+   ```
+
+   （`uid` 以 `id -u mdcz` 为准。）
+
+执行后 `ls -ld` 会从 `d---------` 变成 `drwx------`，这是正常的。已存在的旧文件如果仍不可写，删除该影片目录里的旧 NFO/图片后重新刮削即可。
 
 ## 安全
 
