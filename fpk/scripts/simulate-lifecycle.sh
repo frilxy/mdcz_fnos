@@ -184,7 +184,7 @@ grep -q "已被其他进程占用" "${sim}/temp.log" || fail "端口冲突没有
 pass "端口冲突时拒绝启动并给出明确提示"
 
 echo "== 11. 残留进程检查 =="
-if ps -eo args | grep -E "supervisor\.mjs|mdcz.*server\.js" | grep -v grep >/dev/null; then
+if ps -eo args | grep -F "${sim}/apps/mdcz" | grep -v grep >/dev/null; then
     fail "测试结束后仍有残留进程"
 fi
 pass "没有残留进程"

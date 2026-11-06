@@ -2,7 +2,16 @@
 // MDCz 进程守护：以应用用户身份运行，负责拉起 server.js、崩溃后按退避重启、
 // 收到停止信号时先优雅关闭子进程。pid 文件写入 pid + /proc 启动时间，避免 PID 复用误杀。
 import { spawn } from "node:child_process";
-import { createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,15 +34,6 @@ const readStartTime = (pid) => {
   }
 };
 
-const isAlive = (pid) => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 const readPidFile = (file) => {
   try {
     const [pid, startTime] = readFileSync(file, "utf8").trim().split(" ");
@@ -48,7 +48,7 @@ const writePidFile = (file, pid) => {
 };
 
 const existing = readPidFile(pidFile);
-if (existing && existing.pid && existing.startTime === readStartTime(existing.pid) && existing.pid !== process.pid) {
+if (existing?.pid && existing.startTime === readStartTime(existing.pid) && existing.pid !== process.pid) {
   console.log(`supervisor: 已有实例在运行（pid ${existing.pid}），本次退出`);
   process.exit(0);
 }
