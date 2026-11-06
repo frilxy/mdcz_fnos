@@ -1,9 +1,8 @@
 name: 发布 MDCz fnOS 应用包
 
+# 发布由维护者在本地构建、实机验证后手动打 tag 创建；CI 只保留手动触发，
+# 避免同版本被重复构建出不同 sha256 的产物。
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:

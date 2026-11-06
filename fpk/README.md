@@ -125,25 +125,39 @@ bash fpk/scripts/simulate-lifecycle.sh
 
 ## 已验证 / 未验证
 
-在本机构建并验证（详见 `fpk/scripts/*.sh` 与构建输出）：
+### 真实 fnOS（本机 192.168.10.229，2026-11-06）
 
-- [x] `fnpack 1.2.3` 成功生成 `.fpk`，包内容/版本/图标/入口结构校验通过
-- [x] 官方发行包 SHA256 校验、原生模块（better-sqlite3 / sharp / impit）在 Node 24.22.1 上加载
-- [x] 模拟安装：install_init / install_callback、数据目录初始化、SQLite 初始化
-- [x] 启动 / `/health` / WebUI 首页、status、停止、端口释放
+- [x] 应用中心手动安装 `mdcz-0.21.0.fpk` 成功，依赖 `nodejs_v24` 由应用中心确认并记录
+- [x] 安装后自动运行：`status=running`，进程以专用用户 `mdcz`（uid 981）运行 supervisor + server
+- [x] 桌面入口 `mdcz.main` 为 iframe，端口正确取到向导值 `3838`，标题「MDCz 中文版」
+- [x] `http://192.168.10.229:3838/` 返回 200，`/health` 返回 `{"status":"ok"}`，监听 `0.0.0.0:3838`
+- [x] 应用中心「重启」成功，supervisor/server 换成新 PID 并恢复健康
+- [x] 应用中心「停止」后进程退出、端口释放、`status=stopped`；再次「重启」可正常拉起
+- [x] 数据目录真实生成：`@appshare/mdcz/{config,database,cache,logs,backups}`，属主 `mdcz`；`config/default.toml`、`database/mdcz.sqlite` 已创建
+- [x] 端口状态写入 `@appconf/mdcz/web-port`，值为 3838
+
+> 说明：`fnos-cli` 的 `app start` 会因 `nodejs_v24` 状态为 `nostart`（运行时包，不是可启停服务）而要求走应用中心界面，这是 CLI 的依赖保护，不是应用故障；`app restart` 与 GUI 启动正常。
+
+### 本机模拟验证（与安装后相同的目录结构和 TRIM_* 环境）
+
+- [x] fnpack 1.2.3 构建成功，包结构/版本/图标/入口/依赖校验通过
+- [x] 官方发行包 SHA256 校验、原生模块在 Node 24.22.1 上加载
+- [x] install_init / install_callback、数据目录初始化、SQLite 初始化
+- [x] 启动、`/health`、WebUI 首页、status、停止、端口释放
 - [x] server 被 SIGKILL 后 supervisor 自动重启
 - [x] 运行中修改端口触发重启并持久化
-- [x] 升级保留配置/数据库并生成备份、自动恢复
-- [x] 卸载默认保留数据；选择删除时只清理应用共享目录
+- [x] 升级保留配置/数据库、生成 `pre-upgrade-*.tar.gz`、自动恢复
+- [x] 卸载默认保留数据；选择删除时只清理 `@appshare/mdcz`
 - [x] 端口被占用时拒绝启动并给出用户可见错误
 - [x] 测试后无残留进程
 
-未在真实 fnOS 应用中心完成（需要设备管理员在 GUI/API 上安装）：
+### 尚未实机验证
 
-- [ ] 应用中心真实安装/升级/卸载流程、桌面入口 iframe 打开
-- [ ] 授权目录 ACL 下实际读写影片、写入 NFO/封面、重命名
-- [ ] NAS 重启后随应用中心自启
-- [ ] 刮削功能联网实测（源站可达性、Cookie）
+- [ ] 应用中心「升级」：脚本逻辑已模拟通过，但未在真实应用中心做跨版本升级
+- [ ] NAS 重启后随应用中心自启（依赖 fnOS 默认行为，未重启设备）
+- [ ] 「授权目录」ACL 下实际读取影片、写 NFO/封面、重命名
+- [ ] 真实刮削联网（源站可达性、Cookie/登录）
+- [ ] 浏览器内 iframe 实际打开效果（入口配置与 HTTP 响应已确认）
 
 ## 故障排查
 
