@@ -138,6 +138,8 @@ bash fpk/scripts/simulate-lifecycle.sh
 - [x] 应用中心真实升级 `0.21.0` → `0.21.0.1`：升级前自动停止并生成 `backups/pre-upgrade-0.21.0-to-0.21.0.1-20261106-204648.tar.gz`（约 890 KB），升级后自动启动
 - [x] 升级后 `config/default.toml`、`database/mdcz.sqlite`、`web-port` 全部保留，显示名与入口标题均为「MDCz」，版本 `0.21.0.1`，端口仍为 3838
 - [x] 真实刮削成功：`JUR-890` 生成 `JUR-890.nfo` / `movie.nfo`、poster、fanart、`extrafanart/fanart1-10.jpg`、`.actors` 演员头像，媒体目录写入正常
+- [x] 升级到 `0.21.0.2` 后自动修复生效：`upgrade_callback` 对 `/vol1/1000/download/xunlei`、`/vol3/1000/lim` 执行 `trimacl -m a:o:RWX:sdf`，写入 `@appconf/mdcz/acl-owner-fix-v1`
+- [x] 自动修复后服务仍以 `mdcz` 运行：进程树为 `root runuser -> mdcz supervisor -> mdcz server`，3838 端口不是 root 监听
 
 > 说明：`fnos-cli` 的 `app start` 会因 `nodejs_v24` 状态为 `nostart`（运行时包，不是可启停服务）而要求走应用中心界面，这是 CLI 的依赖保护，不是应用故障；`app restart` 与 GUI 启动正常。
 
