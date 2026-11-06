@@ -135,6 +135,8 @@ bash fpk/scripts/simulate-lifecycle.sh
 - [x] 应用中心「停止」后进程退出、端口释放、`status=stopped`；再次「重启」可正常拉起
 - [x] 数据目录真实生成：`@appshare/mdcz/{config,database,cache,logs,backups}`，属主 `mdcz`；`config/default.toml`、`database/mdcz.sqlite` 已创建
 - [x] 端口状态写入 `@appconf/mdcz/web-port`，值为 3838
+- [x] 应用中心真实升级 `0.21.0` → `0.21.0.1`：升级前自动停止并生成 `backups/pre-upgrade-0.21.0-to-0.21.0.1-20261106-204648.tar.gz`（约 890 KB），升级后自动启动
+- [x] 升级后 `config/default.toml`、`database/mdcz.sqlite`、`web-port` 全部保留，显示名与入口标题均为「MDCz」，版本 `0.21.0.1`，端口仍为 3838
 
 > 说明：`fnos-cli` 的 `app start` 会因 `nodejs_v24` 状态为 `nostart`（运行时包，不是可启停服务）而要求走应用中心界面，这是 CLI 的依赖保护，不是应用故障；`app restart` 与 GUI 启动正常。
 
@@ -153,7 +155,6 @@ bash fpk/scripts/simulate-lifecycle.sh
 
 ### 尚未实机验证
 
-- [ ] 应用中心「升级」：脚本逻辑已模拟通过，但未在真实应用中心做跨版本升级
 - [ ] NAS 重启后随应用中心自启（依赖 fnOS 默认行为，未重启设备）
 - [ ] 「授权目录」ACL 下实际读取影片、写 NFO/封面、重命名
 - [ ] 真实刮削联网（源站可达性、Cookie/登录）
