@@ -175,6 +175,8 @@ bash fpk/scripts/simulate-lifecycle.sh
 
 ### 飞牛 1.2.x 写入权限（trimacl）
 
+> 0.21.0.2 起会自动处理：`cmd/main start` 以 root 对每个授权目录执行 `trimacl -m a:o:RWX:sdf`，首次启动还会遍历已有影片目录补一遍；Web 服务仍然降权到 `mdcz` 运行。下面的手工命令适用于旧版本或自动修复失败的情况。
+
 **现象**：授权目录已设为「读写」，但刮削时仍报：
 
 ```
@@ -209,6 +211,6 @@ EACCES: permission denied, scandir '/vol1/1000/download/xunlei'
 
 ## 安全
 
-- 应用以专用用户 `mdcz` 运行，不使用 root；只申请「授权目录」范围内的文件访问。
+- Web 服务以专用用户 `mdcz` 运行；安装/升级/启停等生命周期脚本以 root 运行，仅用于给「授权目录」补 trimacl ACE，服务进程通过 `runuser` 降权，不以 root 监听端口。
 - 默认监听 `0.0.0.0` 仅为局域网访问，不要直接把端口映射到公网；远程访问建议 VPN 或带认证的反向代理。
 - 升级/卸载脚本只操作 `@appshare/mdcz`，不会删除媒体文件。
