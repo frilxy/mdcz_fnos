@@ -26,6 +26,10 @@ for f in \
 done
 ok "全部必需文件存在"
 
+[ -f "${root}/fpk/upstream-version" ] || fail "缺少 fpk/upstream-version"
+grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' "${root}/fpk/upstream-version" || fail "fpk/upstream-version 格式不合法"
+ok "上游版本：$(cat "${root}/fpk/upstream-version")"
+
 echo "== 2. JSON 文件 =="
 for f in config/privilege config/resource app/ui/config wizard/install wizard/config wizard/upgrade wizard/uninstall; do
     python3 -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))' "${fpk}/${f}" ||

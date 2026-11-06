@@ -1,7 +1,7 @@
 {
     ".url": {
         "mdcz.main": {
-            "title": "MDCz 中文版",
+            "title": "MDCz",
             "icon": "images/icon_{0}.png",
             "type": "iframe",
             "protocol": "http",

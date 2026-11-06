@@ -3,7 +3,7 @@
 把 [MDCz](https://github.com/ShotHeadman/mdcz) 官方 **非 Docker** 发行包（`mdcz-<version>.tar.gz`）封装成飞牛 NAS 应用中心可手动安装的 `.fpk`。
 
 - 运行方式：Linux 原生进程，使用飞牛系统里已安装的 **Node.js 24**（`nodejs_v24`），**不使用 Docker**。
-- 应用名：`mdcz`；显示名：**MDCz 中文版**；默认端口 **3838**。
+- 应用名：`mdcz`；显示名：**MDCz**（官方 WebUI 自带简体中文/英文切换，不额外标注「中文版」）；默认端口 **3838**。
 - 程序文件装在应用目录，用户数据放在应用共享目录「应用文件 → mdcz」。
 - 支持应用中心安装、启动、停止、重启、升级、卸载；崩溃后由内置守护进程自动拉起；NAS 开机后随应用中心自启。
 
@@ -129,7 +129,7 @@ bash fpk/scripts/simulate-lifecycle.sh
 
 - [x] 应用中心手动安装 `mdcz-0.21.0.fpk` 成功，依赖 `nodejs_v24` 由应用中心确认并记录
 - [x] 安装后自动运行：`status=running`，进程以专用用户 `mdcz`（uid 981）运行 supervisor + server
-- [x] 桌面入口 `mdcz.main` 为 iframe，端口正确取到向导值 `3838`，标题「MDCz 中文版」
+- [x] 桌面入口 `mdcz.main` 为 iframe，端口正确取到向导值 `3838`，标题「MDCz」
 - [x] `http://192.168.10.229:3838/` 返回 200，`/health` 返回 `{"status":"ok"}`，监听 `0.0.0.0:3838`
 - [x] 应用中心「重启」成功，supervisor/server 换成新 PID 并恢复健康
 - [x] 应用中心「停止」后进程退出、端口释放、`status=stopped`；再次「重启」可正常拉起
