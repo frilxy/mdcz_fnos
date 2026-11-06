@@ -1,0 +1,10 @@
+#!/bin/sh
+# 卸载前：停止服务，避免留下孤儿进程
+set -u
+MDCZ_SCRIPT_TAG=uninstall_init
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_stop >/dev/null 2>&1 || true
+exit 0

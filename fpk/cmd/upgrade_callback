@@ -1,0 +1,12 @@
+#!/bin/sh
+# 升级后：补齐目录并重新启动
+set -u
+MDCZ_SCRIPT_TAG=upgrade_callback
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+mdcz_ensure_dirs
+mdcz_log "升级完成：${TRIM_OLD_APPVER:-未知版本} -> ${TRIM_APPVER:-未知版本}"
+mdcz_start
+exit $?

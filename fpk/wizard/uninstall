@@ -1,0 +1,17 @@
+[
+    {
+        "stepTitle": "卸载选项",
+        "items": [
+            {
+                "type": "switch",
+                "field": "wizard_remove_data",
+                "label": "同时删除 MDCz 数据目录",
+                "initValue": "false"
+            },
+            {
+                "type": "tips",
+                "helpText": "默认保留数据：配置、数据库、缓存、日志和备份都存放在「应用文件 → mdcz」，卸载后重新安装可以继续使用。选择删除会清空该目录且不可恢复；被授权访问的影片目录和影片文件不会被删除。"
+            }
+        ]
+    }
+]

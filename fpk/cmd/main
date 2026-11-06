@@ -1,0 +1,31 @@
+#!/bin/sh
+# MDCz 运行控制：start / stop / status / log
+set -u
+MDCZ_SCRIPT_TAG=main
+_cmd_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${_cmd_dir}/lib/common.sh"
+
+case "${1:-}" in
+start)
+    mdcz_start
+    exit $?
+    ;;
+stop)
+    mdcz_stop
+    exit $?
+    ;;
+status)
+    mdcz_status
+    exit $?
+    ;;
+log)
+    mdcz_paths
+    tail -n 200 "${MDCZ_SERVER_LOG}" 2>/dev/null
+    exit 0
+    ;;
+*)
+    mdcz_user_error "未知的生命周期参数：${1:-<空>}（可用：start / stop / status / log）"
+    exit 1
+    ;;
+esac
