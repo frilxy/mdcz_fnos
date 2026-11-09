@@ -32,6 +32,8 @@ jobs:
         run: corepack enable
 
       - name: 构建 fpk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash fpk/scripts/build-fpk.sh
 
       - name: 模拟安装/启动/升级/卸载

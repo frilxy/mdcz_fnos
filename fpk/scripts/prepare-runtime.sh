@@ -34,22 +34,85 @@ tag="v${upstream_version}"
 mkdir -p "${cache}" "${build}"
 
 archive="${cache}/mdcz-${upstream_version}.tar.gz"
-sums="${cache}/SHA256SUMS-${upstream_version}.txt"
+release_api="https://api.github.com/repos/${upstream_repo}/releases/tags/${tag}"
+
+gh_curl_json() {
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" "$1"
+    else
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+            -H "Accept: application/vnd.github+json" "$1"
+    fi
+}
+
+download_asset() {
+    _url="$1"
+    _out="$2"
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+            -H "Accept: application/octet-stream" \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -o "${_out}" "${_url}"
+    else
+        curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+            -H "Accept: application/octet-stream" \
+            -o "${_out}" "${_url}"
+    fi
+}
+
+# 走 GitHub API 的资产地址下载：github.com/releases/download 的 CDN 偶发 504，
+# API 资产接口会重定向到对象存储，稳定得多。
+release_json="$(gh_curl_json "${release_api}")" || die "无法读取上游 release ${tag}"
+release_file="$(mktemp)"
+printf '%s' "${release_json}" >"${release_file}"
+asset_info="$(python3 - "${release_file}" "mdcz-${upstream_version}.tar.gz" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+want = sys.argv[2]
+for asset in data.get("assets", []):
+    if asset.get("name") == want:
+        print(asset.get("url", ""))
+        print(asset.get("digest") or "")
+        break
+PY
+)" || die "无法解析上游 release 资产"
+asset_url="$(printf '%s\n' "${asset_info}" | sed -n '1p')"
+asset_digest="$(printf '%s\n' "${asset_info}" | sed -n '2p')"
+[ -n "${asset_url}" ] || die "${tag} 的 release 中没有 mdcz-${upstream_version}.tar.gz"
+
 if [ ! -f "${archive}" ]; then
-    url="https://github.com/${upstream_repo}/releases/download/${tag}/mdcz-${upstream_version}.tar.gz"
-    echo "下载官方发行包：${url}"
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "${archive}.part" "${url}"
+    echo "下载官方发行包（GitHub API 资产）：mdcz-${upstream_version}.tar.gz"
+    download_asset "${asset_url}" "${archive}.part" || die "下载官方发行包失败"
     mv "${archive}.part" "${archive}"
 fi
-if [ ! -f "${sums}" ]; then
-    curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "${sums}.part" \
-        "https://github.com/${upstream_repo}/releases/download/${tag}/SHA256SUMS.txt" ||
-        die "无法下载 SHA256SUMS.txt（版本 ${upstream_version}）"
-    mv "${sums}.part" "${sums}"
-fi
 
-expected="$(awk -v name="./mdcz-${upstream_version}.tar.gz" '$2 == name { print $1 }' "${sums}" | head -n 1)"
-[ -n "${expected}" ] || die "SHA256SUMS.txt 中没有 mdcz-${upstream_version}.tar.gz 的校验值"
+expected="${asset_digest#sha256:}"
+if [ -z "${expected}" ]; then
+    sums_info="$(python3 - "${release_file}" "SHA256SUMS.txt" <<'PY'
+import json
+import sys
+
+data = json.load(open(sys.argv[1], encoding="utf-8"))
+want = sys.argv[2]
+for asset in data.get("assets", []):
+    if asset.get("name") == want:
+        print(asset.get("url", ""))
+        break
+PY
+)"
+    sums_url="$(printf '%s\n' "${sums_info}" | sed -n '1p')"
+    [ -n "${sums_url}" ] || die "${tag} 没有 digest，也没有 SHA256SUMS.txt"
+    sums_file="$(mktemp)"
+    download_asset "${sums_url}" "${sums_file}" || die "无法下载 SHA256SUMS.txt"
+    expected="$(awk -v name="./mdcz-${upstream_version}.tar.gz" '$2 == name { print $1 }' "${sums_file}" | head -n 1)"
+    rm -f "${sums_file}"
+fi
+rm -f "${release_file}"
+[ -n "${expected}" ] || die "无法获取 mdcz-${upstream_version}.tar.gz 的校验值"
 actual="$(sha256sum "${archive}" | awk '{ print $1 }')"
 [ "${actual}" = "${expected}" ] || die "发行包校验失败：期望 ${expected}，实际 ${actual}"
 echo "官方发行包校验通过：sha256 ${actual}"
