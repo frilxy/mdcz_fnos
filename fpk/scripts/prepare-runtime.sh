@@ -38,11 +38,11 @@ sums="${cache}/SHA256SUMS-${upstream_version}.txt"
 if [ ! -f "${archive}" ]; then
     url="https://github.com/${upstream_repo}/releases/download/${tag}/mdcz-${upstream_version}.tar.gz"
     echo "下载官方发行包：${url}"
-    curl -fsSL --retry 3 --retry-delay 3 -o "${archive}.part" "${url}"
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "${archive}.part" "${url}"
     mv "${archive}.part" "${archive}"
 fi
 if [ ! -f "${sums}" ]; then
-    curl -fsSL --retry 3 --retry-delay 3 -o "${sums}.part" \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o "${sums}.part" \
         "https://github.com/${upstream_repo}/releases/download/${tag}/SHA256SUMS.txt" ||
         die "无法下载 SHA256SUMS.txt（版本 ${upstream_version}）"
     mv "${sums}.part" "${sums}"

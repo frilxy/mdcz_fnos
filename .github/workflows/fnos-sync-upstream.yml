@@ -1,0 +1,88 @@
+name: 每天同步上游 MDCz
+
+# 每天北京时间 04:00（UTC 20:00）检查 ShotHeadman/mdcz 最新正式版。
+# 有更新时自动同步版本号、重新构建、跑生命周期模拟，并提交 + 打 tag + 发布 fpk。
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: "指定上游版本（留空=自动取最新，可带 v 前缀）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mdcz-fnos-sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: 准备 Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: 启用 corepack
+        run: corepack enable
+
+      - name: 检查上游并构建
+        id: sync
+        env:
+          TARGET_VERSION: ${{ inputs.target_version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash fpk/scripts/sync-upstream.sh
+
+      - name: 提交、打 tag 并发布
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.sync.outputs.version }}
+          FPK: ${{ steps.sync.outputs.fpk }}
+          SHA256: ${{ steps.sync.outputs.sha256 }}
+          SIZE: ${{ steps.sync.outputs.size }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fpk/manifest fpk/upstream-version
+          git commit -m "chore: 同步上游 MDCz v${VERSION} [skip ci]"
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "tag v${VERSION} 已存在，跳过创建"
+          else
+            git tag "v${VERSION}"
+          fi
+          git push origin HEAD:main
+          git push origin "v${VERSION}" || true
+
+          sha256sum "${FPK}" | awk -v name="mdcz-${VERSION}.fpk" '{ print $1"  "name }' >"dist/mdcz-${VERSION}.fpk.sha256"
+          notes=$(mktemp)
+          {
+            echo "- 同步上游 MDCz v${VERSION} 官方非 Docker 发行包，SHA256 校验后构建"
+            echo "- 使用官方 pnpm lockfile 安装生产依赖，Node.js 24 原生运行，不依赖 Docker"
+            echo "- 保留 fnOS 生命周期、自动 trimacl ACL 修复、升级前备份与数据保留"
+            echo ""
+            echo "sha256: \`${SHA256}\`"
+          } >"${notes}"
+
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            gh release upload "v${VERSION}" "${FPK}" "dist/mdcz-${VERSION}.fpk.sha256" --clobber
+            gh release edit "v${VERSION}" --title "MDCz ${VERSION} 飞牛原生版" --notes-file "${notes}"
+          else
+            gh release create "v${VERSION}" "${FPK}" "dist/mdcz-${VERSION}.fpk.sha256" \
+              --title "MDCz ${VERSION} 飞牛原生版" \
+              --notes-file "${notes}"
+          fi
+          echo "已发布 v${VERSION}（${SIZE} 字节，sha256 ${SHA256}）"
