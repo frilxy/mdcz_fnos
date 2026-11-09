@@ -68,6 +68,32 @@ bash fpk/scripts/simulate-lifecycle.sh
 - 原生依赖 `better-sqlite3`、`sharp`、`impit` 使用 npm 上的 x86_64 预编译包，构建机不需要 gcc；因此本包 `platform=x86`，ARM 设备不可安装。
 - 打包使用飞牛官方 `fnpack 1.2.3`（`https://static2.fnnas.com/fnpack/`），不手写 fpk 格式。
 
+## 自动同步上游
+
+`.github/workflows/fnos-sync-upstream.yml` 每天 **北京时间 04:00**（UTC `0 20 * * *`）检查
+[ShotHeadman/mdcz](https://github.com/ShotHeadman/mdcz) 的最新正式版：
+
+1. 与 `fpk/upstream-version` 比较；没有新版本就结束。
+2. 有新版本时更新 `fpk/upstream-version` 和 `fpk/manifest`（版本号、changelog）。
+3. 下载新发行包并校验 SHA256，按官方 lockfile 重装生产依赖。
+4. 执行 `build-fpk.sh` 与 `simulate-lifecycle.sh`；任一步失败都不会发布。
+5. 提交 `chore: 同步上游 MDCz vX.Y.Z [skip ci]`、打 tag `vX.Y.Z`、发布 `mdcz-X.Y.Z.fpk` 与 `.sha256`。
+
+也可以在 Actions 页面手动触发，指定上游版本：
+
+```bash
+gh workflow run fnos-sync-upstream.yml -f target_version=0.22.0
+```
+
+本地只检查不构建：
+
+```bash
+bash fpk/scripts/sync-upstream.sh --check-only
+```
+
+> 说明：这是“FPK 自动同步 + 自动发布”。飞牛应用中心对手动安装的 FPK 没有商店更新源，
+> NAS 上仍需要在应用中心点一次升级；不会在 NAS 上保存管理员凭据做静默安装。
+
 ## 安装
 
 1. 应用中心 → 手动安装 → 选择 `mdcz-<version>.fpk`。
