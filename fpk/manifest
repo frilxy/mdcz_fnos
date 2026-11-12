@@ -1,5 +1,5 @@
 appname                    = mdcz
-version                    = 0.21.0.2
+version                    = 0.22.0
 display_name               = MDCz
 desc                       = JAV 影片元数据刮削与媒体库整理工具（飞牛 fnOS 原生版）。<br /><br />直接使用飞牛应用中心的 Node.js 24 运行官方非 Docker 发行包，不依赖 Docker；通过浏览器完成刮削、重命名、NFO/封面/剧照写入与媒体库管理。<br /><br />数据（配置、数据库、缓存、日志、备份）保存在「应用文件 → mdcz」下，升级或卸载后重新安装都能继续使用。<br /><br /><strong>使用步骤</strong>：安装后在「应用设置 → 授权目录」把影片所在文件夹授予 MDCz（需要写入 NFO/封面或重命名时请授予读写），再打开应用，在 WebUI 里首次设置管理员密码并添加媒体库。<br /><br /><strong>架构说明</strong>：应用包内置官方发行版的 x86_64 运行时依赖（better-sqlite3 / sharp / impit 原生模块），因此仅支持 x86_64 设备；ARM 设备暂不提供。
 source                     = thirdparty
@@ -15,4 +15,4 @@ install_dep_apps           = nodejs_v24
 checkport                  = false
 ctl_stop                   = true
 disable_authorization_path = false
-changelog                  = 自动修复飞牛 1.2.x trimacl 写入问题：生命周期脚本以 root 对授权目录补 owner RWX ACE，Web 服务仍以 mdcz 用户运行；升级后首次启动会补一次已有影片目录。
+changelog                  = 同步上游 MDCz v0.22.0：使用官方非 Docker 发行包，Node.js 24 原生运行；保留 fnOS 生命周期、自动 trimacl ACL 修复与升级备份。
